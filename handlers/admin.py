@@ -164,12 +164,16 @@ async def product_cat_selected(callback: CallbackQuery, state: FSMContext):
     await callback.message.answer("Mahsulot rasmini yuboring (bir nechta yuborish mumkin). Tugatgach, pastdagi tugmani bosing.", reply_markup=kb)
     await callback.answer()
 
+import asyncio
+photo_upload_lock = asyncio.Lock()
+
 @admin_router.message(AdminProductStates.waiting_for_photos, F.photo)
 async def product_photo_received(message: Message, state: FSMContext):
-    data = await state.get_data()
-    photos = data.get('photos', [])
-    photos.append(message.photo[-1].file_id)
-    await state.update_data(photos=photos)
+    async with photo_upload_lock:
+        data = await state.get_data()
+        photos = data.get('photos', [])
+        photos.append(message.photo[-1].file_id)
+        await state.update_data(photos=photos)
     await message.reply(f"✅ {len(photos)}-rasm qabul qilindi. Yana yuboring yoki '✅ Rasm yuklab bo'ldim' tugmasini bosing.")
 
 @admin_router.callback_query(AdminProductStates.waiting_for_photos, F.data == "done_photos")
@@ -263,10 +267,11 @@ async def admin_edit_prod_start(callback: CallbackQuery, state: FSMContext):
 
 @admin_router.message(AdminProductEditStates.waiting_for_photos, F.photo)
 async def admin_edit_photo_recv(message: Message, state: FSMContext):
-    data = await state.get_data()
-    photos = data.get('photos', [])
-    photos.append(message.photo[-1].file_id)
-    await state.update_data(photos=photos)
+    async with photo_upload_lock:
+        data = await state.get_data()
+        photos = data.get('photos', [])
+        photos.append(message.photo[-1].file_id)
+        await state.update_data(photos=photos)
     await message.reply(f"✅ {len(photos)}-yangi rasm qabul qilindi. Yana yuboring yoki '✅ Yangi rasmlarni yukladim' tugmasini bosing.")
 
 @admin_router.callback_query(AdminProductEditStates.waiting_for_photos, F.data == "skip_photos")
