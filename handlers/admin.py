@@ -216,33 +216,43 @@ async def product_desc(message: Message, state: FSMContext):
 async def product_price(message: Message, state: FSMContext):
     await state.update_data(price=message.text)
     await state.set_state(AdminProductStates.waiting_for_stock)
-    await message.answer("Mavjudlik holatini tanlang:", reply_markup=get_in_stock_kb())
+    await message.answer("📦 Omborga nechta qo'shildi? Sonini raqamda kiriting (Masalan: 5):")
 
 @admin_router.message(AdminProductStates.waiting_for_stock)
 async def product_stock(message: Message, state: FSMContext):
-    in_stock = True if message.text == "✅ Mavjud" else False
-    await state.update_data(in_stock=in_stock)
+    if not message.text or not message.text.isdigit():
+        await message.answer("⚠️ Iltimos, faqat raqam kiriting!")
+        return
+    qty = int(message.text)
+    await state.update_data(in_stock=qty)
     
     data = await state.get_data()
-    stock_text = "✅ Mavjud" if in_stock else "⏳ Buyurtma bo'yicha"
+    cost = data.get('cost_price', 0)
     text = (
         f"🏷 <b>{data['title']}</b>\n\n"
         f"📝 <i>{data['description']}</i>\n\n"
-        f"💰 Narxi: {data['price']}\n"
-        f"📦 Holati: {stock_text}"
+        f"💵 Tannarxi: {cost:,} so'm\n"
+        f"💰 Sotish narxi: {data['price']}\n"
+        f"📦 Ombordagi soni: {qty} dona"
     )
     await state.set_state(AdminProductStates.waiting_for_confirmation)
     if data['photos']:
-        await message.answer_photo(photo=data['photos'][0], caption=f"Preview:\n\n{text}", parse_mode="HTML", reply_markup=get_product_preview_kb())
+        await message.answer_photo(photo=data['photos'][0], caption=f"✅ Preview:\n\n{text}", parse_mode="HTML", reply_markup=get_product_preview_kb())
     else:
-        await message.answer(f"Preview:\n\n{text}", parse_mode="HTML", reply_markup=get_product_preview_kb())
+        await message.answer(f"✅ Preview:\n\n{text}", parse_mode="HTML", reply_markup=get_product_preview_kb())
 
 @admin_router.message(AdminProductStates.waiting_for_confirmation)
 async def product_confirm(message: Message, state: FSMContext):
     if message.text == "✅ Ha (Saqlash)":
         data = await state.get_data()
-        await db.add_product(data['category_id'], data['title'], data['description'], data['price'], data['photos'], data['in_stock'])
-        await message.answer("✅ Beshik muvaffaqiyatli saqlandi!", reply_markup=get_admin_main_menu())
+        cost_price = data.get('cost_price', 0)
+        qty = data['in_stock']
+        await db.add_product(data['category_id'], data['title'], data['description'], data['price'], cost_price, data['photos'], qty)
+        # Add incoming inventory as expense (cost)
+        if cost_price > 0 and qty > 0:
+            total_cost = cost_price * qty
+            await db.add_transaction('expense', total_cost, f"Tovar keldi: {data['title']} x{qty} dona")
+        await message.answer(f"✅ <b>{data['title']}</b> muvaffaqiyatli saqlandi!\n📦 Ombor: {qty} dona", parse_mode="HTML", reply_markup=get_admin_main_menu())
     else:
         await message.answer("❌ Bekor qilindi.", reply_markup=get_admin_main_menu())
     await state.clear()

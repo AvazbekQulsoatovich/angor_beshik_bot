@@ -33,7 +33,7 @@ def deploy():
                 pass
                 
         for file in files:
-            if file in ['beshik.db', '.env', 'deploy.py']:
+            if file in ['deploy.py', 'delete_from_server.py', 'beshik.db']:
                 continue
             local_file = os.path.join(root, file)
             remote_file = os.path.join(remote_path, file).replace('\\', '/')

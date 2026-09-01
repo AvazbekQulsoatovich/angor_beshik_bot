@@ -203,7 +203,7 @@ async def add_transaction(t_type, amount, description, product_id=None):
             (t_type, amount, description, product_id)
         )
         if t_type == 'income' and product_id is not None:
-            await db.execute("UPDATE products SET sales_count = sales_count + 1 WHERE id = ?", (product_id,))
+            await db.execute("UPDATE products SET sales_count = sales_count + 1, in_stock = in_stock - 1 WHERE id = ?", (product_id,))
         await db.commit()
 
 async def get_finances():
@@ -244,4 +244,9 @@ async def get_worst_products():
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute("SELECT title, sales_count FROM products WHERE is_active = 1 ORDER BY sales_count ASC LIMIT 5") as cur:
+            return await cur.fetchall()
+async def get_all_active_products_for_sale():
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT id, title, price, cost_price, in_stock, sales_count FROM products WHERE is_active = 1 ORDER BY in_stock DESC, title ASC") as cur:
             return await cur.fetchall()
