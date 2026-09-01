@@ -6,7 +6,7 @@ def get_admin_main_menu():
         keyboard=[
             [KeyboardButton(text="➕ Mahsulot qo'shish"), KeyboardButton(text="📦 Mahsulotlar (Tahrir/O'chirish)")],
             [KeyboardButton(text="📂 Kategoriyalar"), KeyboardButton(text="📥 So'rovlar")],
-            [KeyboardButton(text="👥 Adminlarni boshqarish")],
+            [KeyboardButton(text="👥 Adminlarni boshqarish"), KeyboardButton(text="💰 Moliya va Statistika")],
             [KeyboardButton(text="🏠 Asosiy menyu")]
         ],
         resize_keyboard=True
@@ -77,5 +77,12 @@ def get_admin_manage_kb(admins):
             InlineKeyboardButton(text=f"ID: {a}", callback_data="ignore"),
             InlineKeyboardButton(text="🗑 O'chirish", callback_data=f"admin_del_admin:{a}")
         )
+    builder.row(InlineKeyboardButton(text="❌ Yopish", callback_data="admin_close_panel"))
+    return builder.as_markup()
+
+def get_finance_kb():
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="💵 Kirim (Savdo) qo'shish", callback_data="fin_add_income"))
+    builder.row(InlineKeyboardButton(text="💸 Chiqim (Xarajat) qo'shish", callback_data="fin_add_expense"))
     builder.row(InlineKeyboardButton(text="❌ Yopish", callback_data="admin_close_panel"))
     return builder.as_markup()

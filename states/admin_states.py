@@ -13,6 +13,7 @@ class AdminProductStates(StatesGroup):
     waiting_for_photos = State()
     waiting_for_title = State()
     waiting_for_description = State()
+    waiting_for_cost_price = State()
     waiting_for_price = State()
     waiting_for_stock = State()
     waiting_for_confirmation = State()
@@ -21,6 +22,7 @@ class AdminProductEditStates(StatesGroup):
     waiting_for_photos = State()
     waiting_for_title = State()
     waiting_for_description = State()
+    waiting_for_cost_price = State()
     waiting_for_price = State()
     waiting_for_stock = State()
 

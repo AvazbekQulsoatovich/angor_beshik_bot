@@ -5,6 +5,7 @@ from config import BOT_TOKEN
 from database.db import init_db
 from handlers.user import user_router
 from handlers.admin import admin_router
+from handlers.finance import finance_router
 
 logging.basicConfig(level=logging.INFO)
 
@@ -15,6 +16,7 @@ async def main():
     dp = Dispatcher()
     
     dp.include_router(admin_router)
+    dp.include_router(finance_router)
     dp.include_router(user_router)
     
     await bot.delete_webhook(drop_pending_updates=True)

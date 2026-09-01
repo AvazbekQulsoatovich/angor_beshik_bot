@@ -21,6 +21,8 @@ async def init_db():
                 title TEXT NOT NULL,
                 description TEXT,
                 price TEXT,
+                cost_price INTEGER DEFAULT 0,
+                sales_count INTEGER DEFAULT 0,
                 photo_file_ids TEXT,
                 in_stock BOOLEAN DEFAULT 1,
                 is_active BOOLEAN DEFAULT 1,
@@ -44,6 +46,16 @@ async def init_db():
             CREATE TABLE IF NOT EXISTS admins (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 telegram_id INTEGER UNIQUE
+            )
+        """)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS transactions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                type TEXT NOT NULL,
+                amount INTEGER NOT NULL,
+                description TEXT,
+                product_id INTEGER,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         """)
         await db.commit()
@@ -128,27 +140,26 @@ async def get_product_by_id(product_id):
         async with db.execute("SELECT * FROM products WHERE id = ?", (product_id,)) as cursor:
             return await cursor.fetchone()
 
-async def add_product(category_id, title, description, price, photo_file_ids_list, in_stock):
-    photos_json = json.dumps(photo_file_ids_list)
+async def add_product(category_id, title, description, price, cost_price, photo_file_ids, in_stock):
     async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            "INSERT INTO products (category_id, title, description, price, photo_file_ids, in_stock) VALUES (?, ?, ?, ?, ?, ?)",
-            (category_id, title, description, price, photos_json, in_stock)
-        )
+        await db.execute("""
+            INSERT INTO products (category_id, title, description, price, cost_price, photo_file_ids, in_stock)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (category_id, title, description, price, cost_price, json.dumps(photo_file_ids), in_stock))
         await db.commit()
 
-async def update_product_all(product_id, title, description, price, in_stock, photos=None):
+async def update_product_all(product_id, title, description, price, cost_price, in_stock, photos=None):
     async with aiosqlite.connect(DB_PATH) as db:
         if photos is not None:
             photos_json = json.dumps(photos)
             await db.execute(
-                "UPDATE products SET title = ?, description = ?, price = ?, in_stock = ?, photo_file_ids = ? WHERE id = ?",
-                (title, description, price, in_stock, photos_json, product_id)
+                "UPDATE products SET title = ?, description = ?, price = ?, cost_price = ?, in_stock = ?, photo_file_ids = ? WHERE id = ?",
+                (title, description, price, cost_price, in_stock, photos_json, product_id)
             )
         else:
             await db.execute(
-                "UPDATE products SET title = ?, description = ?, price = ?, in_stock = ? WHERE id = ?",
-                (title, description, price, in_stock, product_id)
+                "UPDATE products SET title = ?, description = ?, price = ?, cost_price = ?, in_stock = ? WHERE id = ?",
+                (title, description, price, cost_price, in_stock, product_id)
             )
         await db.commit()
 
@@ -183,3 +194,54 @@ async def get_new_inquiries():
         db.row_factory = aiosqlite.Row
         async with db.execute("SELECT * FROM inquiries WHERE status = 'new' ORDER BY id ASC") as cursor:
             return await cursor.fetchall()
+
+# --- Finance ops ---
+async def add_transaction(t_type, amount, description, product_id=None):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "INSERT INTO transactions (type, amount, description, product_id) VALUES (?, ?, ?, ?)",
+            (t_type, amount, description, product_id)
+        )
+        if t_type == 'income' and product_id is not None:
+            await db.execute("UPDATE products SET sales_count = sales_count + 1 WHERE id = ?", (product_id,))
+        await db.commit()
+
+async def get_finances():
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        
+        async with db.execute("SELECT SUM(amount) as total FROM transactions WHERE type = 'income'") as cur:
+            res = await cur.fetchone()
+            total_income = res['total'] or 0
+            
+        async with db.execute("SELECT SUM(amount) as total FROM transactions WHERE type = 'expense'") as cur:
+            res = await cur.fetchone()
+            total_expense = res['total'] or 0
+            
+        async with db.execute("SELECT SUM(amount) as total FROM transactions WHERE type = 'income' AND date(created_at, 'localtime') = date('now', 'localtime')") as cur:
+            res = await cur.fetchone()
+            daily_income = res['total'] or 0
+
+        async with db.execute("SELECT SUM(cost_price) as total FROM products WHERE in_stock = 1 AND is_active = 1") as cur:
+            res = await cur.fetchone()
+            inventory_value = res['total'] or 0
+            
+        return {
+            'total_income': total_income,
+            'total_expense': total_expense,
+            'net_profit': total_income - total_expense,
+            'daily_income': daily_income,
+            'inventory_value': inventory_value
+        }
+
+async def get_top_products():
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT title, sales_count FROM products WHERE is_active = 1 ORDER BY sales_count DESC LIMIT 5") as cur:
+            return await cur.fetchall()
+
+async def get_worst_products():
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT title, sales_count FROM products WHERE is_active = 1 ORDER BY sales_count ASC LIMIT 5") as cur:
+            return await cur.fetchall()

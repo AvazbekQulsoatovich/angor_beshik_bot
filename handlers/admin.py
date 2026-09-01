@@ -319,8 +319,17 @@ async def admin_edit_title(message: Message, state: FSMContext):
 @admin_router.message(AdminProductEditStates.waiting_for_description)
 async def admin_edit_desc(message: Message, state: FSMContext):
     await state.update_data(description=message.text)
+    await state.set_state(AdminProductEditStates.waiting_for_cost_price)
+    await message.answer("YANGI tannarxini (qanchaga kelganini) raqamda kiriting (Masalan: 500000):")
+
+@admin_router.message(AdminProductEditStates.waiting_for_cost_price)
+async def admin_edit_cost_price(message: Message, state: FSMContext):
+    if not message.text.isdigit():
+        await message.answer("Faqat raqam kiriting!")
+        return
+    await state.update_data(cost_price=int(message.text))
     await state.set_state(AdminProductEditStates.waiting_for_price)
-    await message.answer("YANGI narxini kiriting:")
+    await message.answer("YANGI sotilish narxini kiriting (Mijozga ko'rinadigan):")
 
 @admin_router.message(AdminProductEditStates.waiting_for_price)
 async def admin_edit_price(message: Message, state: FSMContext):
