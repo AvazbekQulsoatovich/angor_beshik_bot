@@ -38,6 +38,7 @@ def get_admin_products_list_kb(products, category_id):
     for p in products:
         builder.row(
             InlineKeyboardButton(text=f"{p['title']}", callback_data="ignore"),
+            InlineKeyboardButton(text="💰 Sotildi", callback_data=f"admin_sell_prod:{p['id']}"),
             InlineKeyboardButton(text="✏️ Tahrir", callback_data=f"admin_edit_prod:{p['id']}"),
             InlineKeyboardButton(text="🗑 O'chirish", callback_data=f"admin_del_prod:{p['id']}")
         )
