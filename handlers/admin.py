@@ -209,8 +209,17 @@ async def product_title(message: Message, state: FSMContext):
 @admin_router.message(AdminProductStates.waiting_for_description)
 async def product_desc(message: Message, state: FSMContext):
     await state.update_data(description=message.text)
+    await state.set_state(AdminProductStates.waiting_for_cost_price)
+    await message.answer("💵 Tannarxini kiriting — qanchaga olib keldi/keladigan narx? (Faqat raqam, masalan: 400000):")
+
+@admin_router.message(AdminProductStates.waiting_for_cost_price)
+async def product_cost_price(message: Message, state: FSMContext):
+    if not message.text or not message.text.isdigit():
+        await message.answer("⚠️ Iltimos, faqat raqam kiriting! (Masalan: 400000)")
+        return
+    await state.update_data(cost_price=int(message.text))
     await state.set_state(AdminProductStates.waiting_for_price)
-    await message.answer("Narxni kiriting (masalan, 500 000 so'm):")
+    await message.answer("💰 Sotish narxini kiriting — mijozlarga ko'rinadigan narx (Masalan: 800 000 so'm):")
 
 @admin_router.message(AdminProductStates.waiting_for_price)
 async def product_price(message: Message, state: FSMContext):
@@ -345,17 +354,23 @@ async def admin_edit_cost_price(message: Message, state: FSMContext):
 async def admin_edit_price(message: Message, state: FSMContext):
     await state.update_data(price=message.text)
     await state.set_state(AdminProductEditStates.waiting_for_stock)
-    await message.answer("Mavjudlik holatini tanlang:", reply_markup=get_in_stock_kb())
+    await message.answer("📦 Ombordagi yangi sonini kiriting (raqamda, masalan: 3):")
 
 @admin_router.message(AdminProductEditStates.waiting_for_stock)
 async def admin_edit_stock(message: Message, state: FSMContext):
-    in_stock = True if message.text == "✅ Mavjud" else False
+    if not message.text or not message.text.isdigit():
+        await message.answer("⚠️ Iltimos, faqat raqam kiriting!")
+        return
+    qty = int(message.text)
     data = await state.get_data()
-    
+    cost_price = data.get('cost_price', 0)
     photos = None if data.get('skip_photos') else data.get('photos')
-    await db.update_product_all(data['prod_id'], data['title'], data['description'], data['price'], in_stock, photos)
-    
-    await message.answer("✅ Mahsulot muvaffaqiyatli tahrirlandi!", reply_markup=get_admin_main_menu())
+    await db.update_product_all(data['prod_id'], data['title'], data['description'], data['price'], cost_price, qty, photos)
+    await message.answer(
+        f"✅ <b>{data['title']}</b> muvaffaqiyatli tahrirlandi!\n📦 Ombordagi soni: {qty} dona",
+        parse_mode="HTML",
+        reply_markup=get_admin_main_menu()
+    )
     await state.clear()
 
 # --- Reply to Inquiry ---
