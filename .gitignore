@@ -1,0 +1,5 @@
+.env
+beshik.db
+__pycache__/
+*.pyc
+.system_generated/
