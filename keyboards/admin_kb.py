@@ -6,7 +6,8 @@ def get_admin_main_menu():
         keyboard=[
             [KeyboardButton(text="➕ Mahsulot qo'shish"), KeyboardButton(text="📦 Mahsulotlar (Tahrir/O'chirish)")],
             [KeyboardButton(text="📂 Kategoriyalar"), KeyboardButton(text="📥 So'rovlar")],
-            [KeyboardButton(text="👥 Adminlarni boshqarish")]
+            [KeyboardButton(text="👥 Adminlarni boshqarish")],
+            [KeyboardButton(text="🏠 Asosiy menyu")]
         ],
         resize_keyboard=True
     )
@@ -21,6 +22,7 @@ def get_admin_categories_manage_kb(categories):
             InlineKeyboardButton(text="✏️", callback_data=f"admin_edit_cat:{cat['id']}"),
             InlineKeyboardButton(text="🗑", callback_data=f"admin_del_cat:{cat['id']}")
         )
+    builder.row(InlineKeyboardButton(text="❌ Yopish", callback_data="admin_close_panel"))
     return builder.as_markup()
 
 def get_admin_products_manage_kb(categories):
@@ -28,6 +30,7 @@ def get_admin_products_manage_kb(categories):
     for cat in categories:
         emoji = cat['emoji'] or ""
         builder.row(InlineKeyboardButton(text=f"{emoji} {cat['name']}", callback_data=f"admin_prodcat:{cat['id']}"))
+    builder.row(InlineKeyboardButton(text="❌ Yopish", callback_data="admin_close_panel"))
     return builder.as_markup()
 
 def get_admin_products_list_kb(products, category_id):
@@ -38,7 +41,10 @@ def get_admin_products_list_kb(products, category_id):
             InlineKeyboardButton(text="✏️ Tahrir", callback_data=f"admin_edit_prod:{p['id']}"),
             InlineKeyboardButton(text="🗑 O'chirish", callback_data=f"admin_del_prod:{p['id']}")
         )
-    builder.row(InlineKeyboardButton(text="⬅️ Ortga", callback_data="admin_back_to_prod_cats"))
+    builder.row(
+        InlineKeyboardButton(text="⬅️ Ortga", callback_data="admin_back_to_prod_cats"),
+        InlineKeyboardButton(text="❌ Yopish", callback_data="admin_close_panel")
+    )
     return builder.as_markup()
 
 def get_in_stock_kb():
@@ -71,4 +77,5 @@ def get_admin_manage_kb(admins):
             InlineKeyboardButton(text=f"ID: {a}", callback_data="ignore"),
             InlineKeyboardButton(text="🗑 O'chirish", callback_data=f"admin_del_admin:{a}")
         )
+    builder.row(InlineKeyboardButton(text="❌ Yopish", callback_data="admin_close_panel"))
     return builder.as_markup()

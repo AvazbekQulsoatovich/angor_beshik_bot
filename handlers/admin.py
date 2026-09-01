@@ -37,10 +37,24 @@ async def is_admin(user_id):
 
 @admin_router.message(Command("admin"))
 @admin_router.message(F.text == "🛠 Admin Panel")
-async def cmd_admin(message: Message):
+async def cmd_admin(message: Message, state: FSMContext):
     if not await is_admin(message.from_user.id):
         return
+    await state.clear()
     await message.answer("🛠 Admin paneliga xush kelibsiz!", reply_markup=get_admin_main_menu())
+
+@admin_router.message(F.text == "🏠 Asosiy menyu")
+async def admin_bosh_menyu(message: Message, state: FSMContext):
+    if not await is_admin(message.from_user.id): return
+    await state.clear()
+    from keyboards.user_kb import get_main_menu
+    text = "Siz asosiy menyudasiz 👇"
+    await message.answer(text, reply_markup=get_main_menu(is_admin=True))
+
+@admin_router.callback_query(F.data == "admin_close_panel")
+async def close_inline_panel(callback: CallbackQuery):
+    await callback.message.delete()
+    await callback.answer()
 
 # --- Manage Admins ---
 @admin_router.message(F.text == "👥 Adminlarni boshqarish")
@@ -182,6 +196,10 @@ async def product_photos_done(callback: CallbackQuery, state: FSMContext):
     await callback.message.answer("Beshik nomi / modelini kiriting:")
     await callback.answer()
 
+@admin_router.message(AdminProductStates.waiting_for_photos)
+async def product_photo_invalid(message: Message):
+    await message.reply("⚠️ Iltimos, rasm yuboring! Yoki pastdagi '✅ Rasm yuklab bo'ldim' tugmasini bosing.")
+
 @admin_router.message(AdminProductStates.waiting_for_title)
 async def product_title(message: Message, state: FSMContext):
     await state.update_data(title=message.text)
@@ -287,6 +305,10 @@ async def admin_edit_done_photos(callback: CallbackQuery, state: FSMContext):
     await state.set_state(AdminProductEditStates.waiting_for_title)
     await callback.message.answer("YANGI nomini kiriting:")
     await callback.answer()
+
+@admin_router.message(AdminProductEditStates.waiting_for_photos)
+async def admin_edit_photo_invalid(message: Message):
+    await message.reply("⚠️ Iltimos, rasm yuboring! Yoki pastdagi 'Yangi rasmlarni yukladim / O'zgartirmaslik' tugmasini bosing.")
 
 @admin_router.message(AdminProductEditStates.waiting_for_title)
 async def admin_edit_title(message: Message, state: FSMContext):

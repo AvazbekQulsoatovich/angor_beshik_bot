@@ -166,3 +166,7 @@ async def process_inquiry_message(message: Message, state: FSMContext, bot: Bot)
             
     await state.clear()
     await message.answer("✅ Xabaringiz sotuvchiga yuborildi. Tez orada sizga shu yerning o'zida javob yozishadi. Iltimos kuting.")
+
+@user_router.message()
+async def global_fallback(message: Message):
+    await message.reply("⚠️ Noma'lum buyruq yoki amal. Iltimos, pastdagi menyudan foydalaning 👇")
