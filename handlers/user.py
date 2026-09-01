@@ -1,5 +1,6 @@
 from aiogram import Router, F, Bot
 from aiogram.types import Message, CallbackQuery, InputMediaPhoto
+from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from config import ADMIN_IDS
 import json
@@ -18,7 +19,7 @@ async def is_admin(user_id):
     admins = await get_all_admins()
     return user_id in admins
 
-@user_router.message(F.text == "/start")
+@user_router.message(F.text == "/start", StateFilter('*'))
 async def cmd_start(message: Message, state: FSMContext):
     await state.clear()
     is_adm = await is_admin(message.from_user.id)
@@ -29,7 +30,7 @@ async def cmd_start(message: Message, state: FSMContext):
     )
     await message.answer(text, reply_markup=get_main_menu(is_adm), parse_mode="Markdown")
 
-@user_router.message(F.text == "ℹ️ Biz haqimizda")
+@user_router.message(F.text == "ℹ️ Biz haqimizda", StateFilter('*'))
 async def show_address(message: Message):
     text = (
         "📍 **Bizning manzil:** Angor bozori.\n\n"
@@ -43,7 +44,7 @@ async def show_address(message: Message):
     await message.answer_venue(latitude=37.4460347, longitude=67.1538179, title="Angor Beshiklari do'koni", address="Angor bozori")
     await message.answer(text, parse_mode="Markdown")
 
-@user_router.message(F.text == "👨‍💻 Admin bilan aloqa")
+@user_router.message(F.text == "👨‍💻 Admin bilan aloqa", StateFilter('*'))
 async def contact_admin_general(message: Message):
     text = (
         "Sotuvchiga to'g'ridan to'g'ri yozish uchun @jasurbekkk01 ga murojaat qiling yoki +998 95 777 51 95 raqamiga qo'ng'iroq qiling.\n\n"
@@ -51,7 +52,7 @@ async def contact_admin_general(message: Message):
     )
     await message.answer(text, parse_mode="Markdown")
 
-@user_router.message(F.text == "🛍 Katalog")
+@user_router.message(F.text == "🛍 Katalog", StateFilter('*'))
 async def show_catalog(message: Message):
     categories = await db.get_all_categories(active_only=True)
     if not categories:
@@ -167,6 +168,6 @@ async def process_inquiry_message(message: Message, state: FSMContext, bot: Bot)
     await state.clear()
     await message.answer("✅ Xabaringiz sotuvchiga yuborildi. Tez orada sizga shu yerning o'zida javob yozishadi. Iltimos kuting.")
 
-@user_router.message()
+@user_router.message(StateFilter("*"))
 async def global_fallback(message: Message):
     await message.reply("⚠️ Noma'lum buyruq yoki amal. Iltimos, pastdagi menyudan foydalaning 👇")
