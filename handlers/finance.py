@@ -18,8 +18,8 @@ class FinanceStates(StatesGroup):
 class FinanceSellStates(StatesGroup):
     waiting_for_price = State()
 
-# ─── Sotuv qilish (Sales) ──────────────────────────────────────────────────────
-@finance_router.message(F.text == "🛒 Sotuv qilish", StateFilter('*'))
+# ─── Sotuv qilish (Kirim) ──────────────────────────────────────────────────────
+@finance_router.message(F.text == "📥 Kirim (Sotuv)", StateFilter('*'))
 async def show_sell_products(message: Message, state: FSMContext):
     await state.clear()
     all_prods = await db.get_all_active_products_for_sale()
@@ -39,7 +39,7 @@ async def show_sell_products(message: Message, state: FSMContext):
     builder.row(InlineKeyboardButton(text="❌ Yopish", callback_data="admin_close_panel"))
 
     await message.answer(
-        "🛒 <b>Sotuv bo'limi</b>\n\nMahsulotni tanlang (✅ - mavjud, ❌ - tugagan):",
+        "📥 <b>Sotuv bo'limi (Kirim)</b>\n\nMahsulotni tanlang (Sotilganda avtomatik kirim bo'ladi):",
         parse_mode="HTML",
         reply_markup=builder.as_markup()
     )
@@ -72,7 +72,7 @@ async def sell_product_selected(callback: CallbackQuery, state: FSMContext):
 
     await callback.message.edit_reply_markup(reply_markup=None)
     await callback.message.answer(
-        f"✅ <b>Sotuv qayd etildi!</b>\n\n"
+        f"✅ <b>Kirim (Sotuv) qayd etildi!</b>\n\n"
         f"📦 Mahsulot: <b>{title}</b>\n"
         f"📉 Ombor: <b>{product['in_stock'] - 1} dona</b> qoldi\n"
         f"💵 Tannarxi: <b>{cost_price:,} so'm</b>\n"
@@ -95,59 +95,44 @@ async def show_finance_menu(message: Message, state: FSMContext):
 
     text = (
         "📊 <b>MOLIYAVIY HISOBOT</b>\n\n"
-        "━━━ 💹 SAVDO HISOBI ━━━\n"
+        "━━━ 💹 UMUMIY HISOB ━━━\n"
         f"💵 Umumiy tushum (Kirim): <b>{stats['total_income']:,} so'm</b>\n"
         f"💸 Umumiy xarajat (Chiqim): <b>{stats['total_expense']:,} so'm</b>\n"
-        f"💰 Sof foyda: <b>{stats['net_profit']:,} so'm</b>\n"
-        f"📈 Bugungi savdo: <b>{stats['daily_income']:,} so'm</b>\n\n"
-        "━━━ 📦 OMBOR TAHLILI ━━━\n"
-        f"🏷 Ombordagi mahsulot turi: <b>{inv['total_products']} xil</b>\n"
+        f"💰 Sof foyda: <b>{stats['net_profit']:,} so'm</b>\n\n"
+        
+        "━━━ 📅 BUGUNGI KUNLIK HISOB ━━━\n"
+        f"📥 Bugungi kirim (Savdo): <b>{stats['daily_income']:,} so'm</b>\n"
+        f"📤 Bugungi chiqim (Xarajat): <b>{stats['daily_expense']:,} so'm</b>\n"
+        f"💵 Bugungi toza foyda: <b>{stats['daily_net_profit']:,} so'm</b>\n"
+    )
+    
+    if stats['daily_expenses_list']:
+        text += "\n🧾 <i>Bugungi chiqimlar ro'yxati:</i>\n"
+        for exp in stats['daily_expenses_list']:
+            text += f"➖ {exp['description']}: {exp['amount']:,} so'm\n"
+            
+    text += (
+        "\n━━━ 📦 OMBOR TAHLILI ━━━\n"
+        f"🏷 Mahsulot turi: <b>{inv['total_products']} xil</b>\n"
         f"📦 Jami dona: <b>{inv['total_qty']} dona</b>\n"
         f"💸 Tikkan mablag' (tannarx): <b>{inv['total_cost_invested']:,} so'm</b>\n"
-        f"💵 Hammasi sotilib ketsа: <b>{inv['total_potential_revenue']:,} so'm</b>\n"
+        f"💵 Hammasi sotilsa: <b>{inv['total_potential_revenue']:,} so'm</b>\n"
         f"📈 Kutilayotgan foyda: <b>{inv['potential_profit']:,} so'm</b>\n\n"
     )
     if top_products:
         text += "🔥 <b>Eng ko'p sotilganlar:</b>\n"
         for p in top_products:
             text += f"  ▪️ {p['title']} — {p['sales_count']} marta\n"
-    if worst_products:
-        text += "\n🧊 <b>Eng kam sotilganlar:</b>\n"
-        for p in worst_products:
-            text += f"  ▪️ {p['title']} — {p['sales_count']} marta\n"
 
-    await message.answer(text, parse_mode="HTML", reply_markup=get_finance_kb())
+    await message.answer(text, parse_mode="HTML", reply_markup=get_admin_main_menu())
 
-# ─── Qo'lda kirim qo'shish ────────────────────────────────────────────────────
-@finance_router.callback_query(F.data == "fin_add_income")
-async def fin_add_inc(callback: CallbackQuery, state: FSMContext):
-    await state.set_state(FinanceStates.waiting_for_income_amount)
-    await callback.message.answer("Kirim summasini raqamda kiriting (Masalan: 150000):")
-    await callback.answer()
-
-@finance_router.message(FinanceStates.waiting_for_income_amount)
-async def fin_inc_amount(message: Message, state: FSMContext):
-    if not message.text or not message.text.isdigit():
-        await message.answer("⚠️ Faqat raqam kiriting!")
-        return
-    await state.update_data(amount=int(message.text))
-    await state.set_state(FinanceStates.waiting_for_income_desc)
-    await message.answer("Nima uchun kirim qilinganini yozing:")
-
-@finance_router.message(FinanceStates.waiting_for_income_desc)
-async def fin_inc_desc(message: Message, state: FSMContext):
-    data = await state.get_data()
-    amount = data['amount']
-    await db.add_transaction('income', amount, message.text)
-    await state.clear()
-    await message.answer(f"✅ Kirim saqlandi: <b>{amount:,} so'm</b> — {message.text}", parse_mode="HTML")
-
-# ─── Qo'lda chiqim qo'shish ───────────────────────────────────────────────────
-@finance_router.callback_query(F.data == "fin_add_expense")
-async def fin_add_exp(callback: CallbackQuery, state: FSMContext):
+# ─── Qo'lda chiqim qo'shish (Asosiy Menyudan) ───────────────────────────────────────────────────
+@finance_router.message(F.text == "📤 Chiqim (Xarajat)", StateFilter('*'))
+async def main_add_exp(message: Message, state: FSMContext):
     await state.set_state(FinanceStates.waiting_for_expense_amount)
-    await callback.message.answer("Chiqim (xarajat) summasini raqamda kiriting (Masalan: 50000):")
-    await callback.answer()
+    await message.answer("📤 Chiqim (xarajat) summasini raqamda kiriting (Masalan: 50000):")
+
+
 
 @finance_router.message(FinanceStates.waiting_for_expense_amount)
 async def fin_exp_amount(message: Message, state: FSMContext):
