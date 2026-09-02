@@ -290,9 +290,12 @@ async def find_product_by_title(title):
         async with db.execute("SELECT * FROM products WHERE LOWER(title) = LOWER(?) AND is_active = 1", (title,)) as cur:
             return await cur.fetchone()
 
-async def add_stock_to_product(product_id, qty, cost_price, sale_price):
+async def add_stock_to_product(product_id, qty, cost_price, sale_price=None):
     async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("UPDATE products SET in_stock = in_stock + ?, cost_price = ?, price = ? WHERE id = ?", (qty, cost_price, sale_price, product_id))
+        if sale_price is not None:
+            await db.execute("UPDATE products SET in_stock = in_stock + ?, cost_price = ?, price = ? WHERE id = ?", (qty, cost_price, sale_price, product_id))
+        else:
+            await db.execute("UPDATE products SET in_stock = in_stock + ?, cost_price = ? WHERE id = ?", (qty, cost_price, product_id))
         await db.commit()
 
 async def get_inventory_analytics():
