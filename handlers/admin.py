@@ -324,7 +324,7 @@ async def product_confirm(message: Message, state: FSMContext):
             # New product
             await db.add_product(data['category_id'], data['title'], data['description'], data['price'], cost_price, data['photos'], qty)
             if cost_price > 0 and qty > 0:
-                await db.add_transaction('expense', cost_price * qty, f"Yangi tovar: {data['title']} x{qty} dona")
+                await db.add_transaction('restock', cost_price * qty, f"Yangi tovar: {data['title']} x{qty} dona")
             await message.answer(
                 f"✅ <b>{data['title']}</b> muvaffaqiyatli saqlandi!\n📦 Ombor: {qty} dona",
                 parse_mode="HTML", reply_markup=get_admin_main_menu()
