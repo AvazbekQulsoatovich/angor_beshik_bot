@@ -59,58 +59,53 @@ async def sell_product_selected(callback: CallbackQuery, state: FSMContext):
         await callback.answer("❌ Bu mahsulot omborda qolmagan!", show_alert=True)
         return
 
-    await state.update_data(sell_product_id=product_id, sell_product_title=product['title'], sell_cost_price=product['cost_price'])
-    await state.set_state(FinanceSellStates.waiting_for_price)
-    await callback.message.answer(
-        f"💰 <b>{product['title']}</b> sotilmoqda.\n\n"
-        f"📦 Ombordagi miqdori: <b>{product['in_stock']} dona</b>\n"
-        f"💵 Tannarxi: <b>{product['cost_price']:,} so'm</b>\n\n"
-        f"Sotilgan narxini raqamda kiriting (Masalan: 800000):",
-        parse_mode="HTML"
-    )
-    await callback.answer()
-
-@finance_router.message(FinanceSellStates.waiting_for_price)
-async def sell_price_entered(message: Message, state: FSMContext):
-    if not message.text or not message.text.isdigit():
-        await message.answer("⚠️ Iltimos, faqat raqam kiriting!")
-        return
-
-    data = await state.get_data()
-    product_id = data.get('sell_product_id')
-    title = data.get('sell_product_title')
-    cost_price = data.get('sell_cost_price', 0)
-    sale_price = int(message.text)
+    # Parse sale price from price string (extract digits)
+    import re
+    price_digits = re.sub(r'[^\d]', '', str(product['price']))
+    sale_price = int(price_digits) if price_digits else 0
+    cost_price = product['cost_price'] or 0
     profit = sale_price - cost_price
+    title = product['title']
 
+    # Auto-register sale at product's listed price
     await db.add_transaction('income', sale_price, f"Sotuv: {title}", product_id)
-    await state.clear()
 
-    await message.answer(
-        f"✅ <b>Sotuv muvaffaqiyatli qayd etildi!</b>\n\n"
+    await callback.message.edit_reply_markup(reply_markup=None)
+    await callback.message.answer(
+        f"✅ <b>Sotuv qayd etildi!</b>\n\n"
         f"📦 Mahsulot: <b>{title}</b>\n"
+        f"📉 Ombor: <b>{product['in_stock'] - 1} dona</b> qoldi\n"
         f"💵 Tannarxi: <b>{cost_price:,} so'm</b>\n"
         f"💰 Sotilgan narxi: <b>{sale_price:,} so'm</b>\n"
-        f"📈 Ushbu savdodan foyda: <b>{profit:,} so'm</b>",
+        f"📈 Bu savdodan foyda: <b>{profit:,} so'm</b>",
         parse_mode="HTML",
         reply_markup=get_admin_main_menu()
     )
+    await callback.answer()
+    await state.clear()
 
 # ─── Moliya Statistikasi ───────────────────────────────────────────────────────
 @finance_router.message(F.text == "💰 Moliya va Statistika", StateFilter('*'))
 async def show_finance_menu(message: Message, state: FSMContext):
     await state.clear()
     stats = await db.get_finances()
+    inv = await db.get_inventory_analytics()
     top_products = await db.get_top_products()
     worst_products = await db.get_worst_products()
 
     text = (
         "📊 <b>MOLIYAVIY HISOBOT</b>\n\n"
+        "━━━ 💹 SAVDO HISOBI ━━━\n"
         f"💵 Umumiy tushum (Kirim): <b>{stats['total_income']:,} so'm</b>\n"
         f"💸 Umumiy xarajat (Chiqim): <b>{stats['total_expense']:,} so'm</b>\n"
-        f"💰 Sof foyda: <b>{stats['net_profit']:,} so'm</b>\n\n"
-        f"📈 Bugungi savdo: <b>{stats['daily_income']:,} so'm</b>\n"
-        f"📦 Omborxona qiymati (tannarx): <b>{stats['inventory_value']:,} so'm</b>\n\n"
+        f"💰 Sof foyda: <b>{stats['net_profit']:,} so'm</b>\n"
+        f"📈 Bugungi savdo: <b>{stats['daily_income']:,} so'm</b>\n\n"
+        "━━━ 📦 OMBOR TAHLILI ━━━\n"
+        f"🏷 Ombordagi mahsulot turi: <b>{inv['total_products']} xil</b>\n"
+        f"📦 Jami dona: <b>{inv['total_qty']} dona</b>\n"
+        f"💸 Tikkan mablag' (tannarx): <b>{inv['total_cost_invested']:,} so'm</b>\n"
+        f"💵 Hammasi sotilib ketsа: <b>{inv['total_potential_revenue']:,} so'm</b>\n"
+        f"📈 Kutilayotgan foyda: <b>{inv['potential_profit']:,} so'm</b>\n\n"
     )
     if top_products:
         text += "🔥 <b>Eng ko'p sotilganlar:</b>\n"
