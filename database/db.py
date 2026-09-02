@@ -218,6 +218,10 @@ async def get_finances():
             res = await cur.fetchone()
             total_expense = res['total'] or 0
             
+        async with db.execute("SELECT SUM(amount) as total FROM transactions WHERE type = 'restock'") as cur:
+            res = await cur.fetchone()
+            total_restock = res['total'] or 0
+            
         async with db.execute("SELECT SUM(amount) as total FROM transactions WHERE type = 'income' AND date(created_at, 'localtime') = date('now', 'localtime')") as cur:
             res = await cur.fetchone()
             daily_income = res['total'] or 0
@@ -225,6 +229,10 @@ async def get_finances():
         async with db.execute("SELECT SUM(amount) as total FROM transactions WHERE type = 'expense' AND date(created_at, 'localtime') = date('now', 'localtime')") as cur:
             res = await cur.fetchone()
             daily_expense = res['total'] or 0
+
+        async with db.execute("SELECT SUM(amount) as total FROM transactions WHERE type = 'restock' AND date(created_at, 'localtime') = date('now', 'localtime')") as cur:
+            res = await cur.fetchone()
+            daily_restock = res['total'] or 0
 
         async with db.execute('''
             SELECT SUM(t.amount - COALESCE(p.cost_price, 0)) as total 
@@ -237,22 +245,19 @@ async def get_finances():
 
         async with db.execute("SELECT description, amount FROM transactions WHERE type = 'expense' AND date(created_at, 'localtime') = date('now', 'localtime') ORDER BY created_at DESC") as cur:
             daily_expenses_list = await cur.fetchall()
-
-        async with db.execute("SELECT SUM(cost_price) as total FROM products WHERE in_stock = 1 AND is_active = 1") as cur:
-            res = await cur.fetchone()
-            inventory_value = res['total'] or 0
             
         return {
             'total_income': total_income,
             'total_expense': total_expense,
+            'total_restock': total_restock,
             'net_profit': total_income - total_expense,
             'daily_income': daily_income,
             'daily_expense': daily_expense,
+            'daily_restock': daily_restock,
             'daily_net_profit': daily_income - daily_expense,
             'daily_sale_profit': daily_sale_profit,
             'daily_pocket': daily_sale_profit - daily_expense,
-            'daily_expenses_list': daily_expenses_list,
-            'inventory_value': inventory_value
+            'daily_expenses_list': daily_expenses_list
         }
 
 async def get_top_products():

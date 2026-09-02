@@ -97,25 +97,27 @@ async def show_finance_menu(message: Message, state: FSMContext):
         "📊 <b>MOLIYAVIY HISOBOT</b>\n\n"
         "━━━ 💹 UMUMIY HISOB ━━━\n"
         f"💵 Umumiy tushum (Kirim): <b>{stats['total_income']:,} so'm</b>\n"
-        f"💸 Umumiy xarajat (Chiqim): <b>{stats['total_expense']:,} so'm</b>\n"
+        f"💸 Operatsion xarajat (Chiqim): <b>{stats['total_expense']:,} so'm</b>\n"
+        f"📦 Omborga sarmoya (Tovar olishga): <b>{stats['total_restock']:,} so'm</b>\n"
         f"💰 Sof foyda: <b>{stats['net_profit']:,} so'm</b>\n\n"
         
         "━━━ 📅 BUGUNGI KUNLIK HISOB ━━━\n"
         f"📥 Bugungi kirim (Savdo): <b>{stats['daily_income']:,} so'm</b>\n"
-        f"📤 Bugungi chiqim (Xarajat): <b>{stats['daily_expense']:,} so'm</b>\n"
-        f"💵 Bugungi toza foyda (Kirim-Chiqim): <b>{stats['daily_net_profit']:,} so'm</b>\n"
+        f"📤 Bugungi operatsion xarajat: <b>{stats['daily_expense']:,} so'm</b>\n"
+        f"📦 Bugungi tovar olishga sarmoya: <b>{stats['daily_restock']:,} so'm</b>\n"
     )
     
     if stats['daily_expenses_list']:
-        text += "\n🧾 <i>Bugungi chiqimlar ro'yxati:</i>\n"
+        text += "\n🧾 <i>Bugungi operatsion chiqimlar ro'yxati:</i>\n"
         for exp in stats['daily_expenses_list']:
             text += f"➖ {exp['description']}: {exp['amount']:,} so'm\n"
             
     text += (
         "\n💰 <b>SIZNING CHO'NTAGINGIZDA (Bugun):</b>\n"
         f"Savdodan tushgan sof foyda (tannarxsiz): <b>{stats['daily_sale_profit']:,} so'm</b>\n"
-        f"Shundan xarajatlar ayrilsa: <b>-{stats['daily_expense']:,} so'm</b>\n"
+        f"Shundan operatsion xarajatlar (taksi, obet) ayrilsa: <b>-{stats['daily_expense']:,} so'm</b>\n"
         f"👉 <b>Sizga qoldi: {stats['daily_pocket']:,} so'm</b>\n"
+        f"<i>(Izoh: Omborga kiritilgan sarmoya foydadan ayirilmaydi, chunki u omborda tovar bo'lib turibdi)</i>\n"
     )
     
     text += (
@@ -236,13 +238,13 @@ async def restock_qty_entered(message: Message, state: FSMContext):
     
     await db.add_stock_to_product(data['restock_id'], qty, data['cost_price'], data['sale_price'])
     total_expense = qty * data['cost_price']
-    await db.add_transaction('expense', total_expense, f"Omborga kirim: {data['title']} x{qty} dona")
+    await db.add_transaction('restock', total_expense, f"Omborga kirim: {data['title']} x{qty} dona")
     
     await state.clear()
     await message.answer(
         f"✅ <b>Ombor to'ldirildi!</b>\n\n"
         f"📦 {data['title']}: <b>+{qty} dona</b>\n"
-        f"💸 Moliyaga xarajat yozildi: <b>{total_expense:,} so'm</b>",
+        f"💸 Sarmoya kiritildi (Xarajat emas): <b>{total_expense:,} so'm</b>",
         parse_mode="HTML",
         reply_markup=get_admin_main_menu()
     )

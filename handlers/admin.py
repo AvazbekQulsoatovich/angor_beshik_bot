@@ -317,11 +317,9 @@ async def product_confirm(message: Message, state: FSMContext):
             # Restock existing product
             await db.add_stock_to_product(restock_id, qty, cost_price)
             if cost_price > 0 and qty > 0:
-                await db.add_transaction('expense', cost_price * qty, f"Tovar to'ldirildi: {data['title']} x{qty} dona")
-            await message.answer(
-                f"✅ <b>{data['title']}</b> ombori to'ldirildi!\n📦 Qo'shildi: +{qty} dona",
-                parse_mode="HTML", reply_markup=get_admin_main_menu()
-            )
+                await db.add_transaction('restock', cost_price * qty, f"Tovar to'ldirildi: {data['title']} x{qty} dona")
+            await state.clear()
+            await message.answer(f"✅ <b>{data['title']}</b> omborga qo'shildi!\nSoni: {qty} ta, Jami sarmoya: {cost_price * qty:,} so'm.", parse_mode="HTML", reply_markup=get_admin_main_menu())
         else:
             # New product
             await db.add_product(data['category_id'], data['title'], data['description'], data['price'], cost_price, data['photos'], qty)
