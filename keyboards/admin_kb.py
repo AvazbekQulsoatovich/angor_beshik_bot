@@ -4,8 +4,8 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 def get_admin_main_menu():
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="🛒 Sotuv qilish (Chiqim)"), KeyboardButton(text="📥 Omborga kirim")],
-            [KeyboardButton(text="📤 Boshqa xarajatlar"), KeyboardButton(text="➕ Yangi mahsulot")],
+            [KeyboardButton(text="🛒 Sotuv qilish"), KeyboardButton(text="📦 Omborga tovar qo'shish")],
+            [KeyboardButton(text="💸 Boshqa xarajatlar"), KeyboardButton(text="➕ Yangi mahsulot")],
             [KeyboardButton(text="📦 Mahsulotlar (Tahrir)"), KeyboardButton(text="📂 Kategoriyalar")],
             [KeyboardButton(text="📥 So'rovlar"), KeyboardButton(text="👥 Adminlar")],
             [KeyboardButton(text="💰 Moliya va Statistika"), KeyboardButton(text="🏠 Asosiy menyu")]

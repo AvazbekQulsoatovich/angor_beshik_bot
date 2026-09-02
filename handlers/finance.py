@@ -19,7 +19,7 @@ class FinanceSellStates(StatesGroup):
     waiting_for_price = State()
 
 # ─── Sotuv qilish (Kirim) ──────────────────────────────────────────────────────
-@finance_router.message(F.text == "📥 Kirim (Sotuv)", StateFilter('*'))
+@finance_router.message(F.text == "🛒 Sotuv qilish", StateFilter('*'))
 async def show_sell_products(message: Message, state: FSMContext):
     await state.clear()
     all_prods = await db.get_all_active_products_for_sale()
@@ -134,7 +134,7 @@ async def show_finance_menu(message: Message, state: FSMContext):
     await message.answer(text, parse_mode="HTML", reply_markup=get_admin_main_menu())
 
 # ─── Qo'lda chiqim qo'shish (Asosiy Menyudan) ───────────────────────────────────────────────────
-@finance_router.message(F.text == "📤 Chiqim (Xarajat)", StateFilter('*'))
+@finance_router.message(F.text == "💸 Boshqa xarajatlar", StateFilter('*'))
 async def main_add_exp(message: Message, state: FSMContext):
     await state.set_state(FinanceStates.waiting_for_expense_amount)
     await message.answer("📤 Chiqim (xarajat) summasini raqamda kiriting (Masalan: 50000):")
@@ -156,7 +156,7 @@ async def fin_exp_desc(message: Message, state: FSMContext):
     amount = data['amount']
     await db.add_transaction('expense', amount, message.text)
     await state.clear()
-    await message.answer(f"✅ Chiqim saqlandi: <b>{amount:,} so'm</b> — {message.text}", parse_mode="HTML")
+    await message.answer(f"✅ Chiqim saqlandi: <b>{amount:,} so'm</b> — {message.text}", parse_mode="HTML", reply_markup=get_admin_main_menu())
 
 # ─── Omborga kirim (Restock) ──────────────────────────────────────────────────
 class RestockStates(StatesGroup):
@@ -164,7 +164,7 @@ class RestockStates(StatesGroup):
     waiting_for_sale_price = State()
     waiting_for_qty = State()
 
-@finance_router.message(F.text == "📥 Omborga kirim", StateFilter('*'))
+@finance_router.message(F.text == "📦 Omborga tovar qo'shish", StateFilter('*'))
 async def show_restock_products(message: Message, state: FSMContext):
     await state.clear()
     all_prods = await db.get_all_active_products_for_sale()
