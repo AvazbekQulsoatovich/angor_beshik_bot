@@ -139,7 +139,11 @@ async def contact_admin(callback: CallbackQuery, state: FSMContext):
 @user_router.callback_query(F.data == "cancel_action")
 async def cancel_action(callback: CallbackQuery, state: FSMContext):
     await state.clear()
-    await callback.message.edit_text("❌ Amal bekor qilindi.")
+    try:
+        await callback.message.delete()
+    except:
+        pass
+    await callback.message.answer("❌ Amal bekor qilindi.")
 
 @user_router.message(UserStates.waiting_for_message)
 async def process_inquiry_message(message: Message, state: FSMContext, bot: Bot):
