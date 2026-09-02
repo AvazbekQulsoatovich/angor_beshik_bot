@@ -226,6 +226,15 @@ async def get_finances():
             res = await cur.fetchone()
             daily_expense = res['total'] or 0
 
+        async with db.execute('''
+            SELECT SUM(t.amount - COALESCE(p.cost_price, 0)) as total 
+            FROM transactions t 
+            LEFT JOIN products p ON t.product_id = p.id 
+            WHERE t.type = 'income' AND date(t.created_at, 'localtime') = date('now', 'localtime')
+        ''') as cur:
+            res = await cur.fetchone()
+            daily_sale_profit = res['total'] or 0
+
         async with db.execute("SELECT description, amount FROM transactions WHERE type = 'expense' AND date(created_at, 'localtime') = date('now', 'localtime') ORDER BY created_at DESC") as cur:
             daily_expenses_list = await cur.fetchall()
 
@@ -240,6 +249,8 @@ async def get_finances():
             'daily_income': daily_income,
             'daily_expense': daily_expense,
             'daily_net_profit': daily_income - daily_expense,
+            'daily_sale_profit': daily_sale_profit,
+            'daily_pocket': daily_sale_profit - daily_expense,
             'daily_expenses_list': daily_expenses_list,
             'inventory_value': inventory_value
         }

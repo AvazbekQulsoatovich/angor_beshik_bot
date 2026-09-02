@@ -103,7 +103,7 @@ async def show_finance_menu(message: Message, state: FSMContext):
         "━━━ 📅 BUGUNGI KUNLIK HISOB ━━━\n"
         f"📥 Bugungi kirim (Savdo): <b>{stats['daily_income']:,} so'm</b>\n"
         f"📤 Bugungi chiqim (Xarajat): <b>{stats['daily_expense']:,} so'm</b>\n"
-        f"💵 Bugungi toza foyda: <b>{stats['daily_net_profit']:,} so'm</b>\n"
+        f"💵 Bugungi toza foyda (Kirim-Chiqim): <b>{stats['daily_net_profit']:,} so'm</b>\n"
     )
     
     if stats['daily_expenses_list']:
@@ -111,6 +111,13 @@ async def show_finance_menu(message: Message, state: FSMContext):
         for exp in stats['daily_expenses_list']:
             text += f"➖ {exp['description']}: {exp['amount']:,} so'm\n"
             
+    text += (
+        "\n💰 <b>SIZNING CHO'NTAGINGIZDA (Bugun):</b>\n"
+        f"Savdodan tushgan sof foyda (tannarxsiz): <b>{stats['daily_sale_profit']:,} so'm</b>\n"
+        f"Shundan xarajatlar ayrilsa: <b>-{stats['daily_expense']:,} so'm</b>\n"
+        f"👉 <b>Sizga qoldi: {stats['daily_pocket']:,} so'm</b>\n"
+    )
+    
     text += (
         "\n━━━ 📦 OMBOR TAHLILI ━━━\n"
         f"🏷 Mahsulot turi: <b>{inv['total_products']} xil</b>\n"
