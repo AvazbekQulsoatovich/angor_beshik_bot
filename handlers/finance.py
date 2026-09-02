@@ -85,7 +85,7 @@ async def sell_product_selected(callback: CallbackQuery, state: FSMContext):
     await state.clear()
 
 # ─── Moliya Statistikasi ───────────────────────────────────────────────────────
-@finance_router.message(F.text == "💰 Moliya va Statistika", StateFilter('*'))
+@finance_router.message(F.text == "📊 Moliya va Hisobot", StateFilter('*'))
 async def show_finance_menu(message: Message, state: FSMContext):
     await state.clear()
     stats = await db.get_finances()
@@ -94,39 +94,39 @@ async def show_finance_menu(message: Message, state: FSMContext):
     worst_products = await db.get_worst_products()
 
     text = (
-        "📊 <b>MOLIYAVIY HISOBOT</b>\n\n"
-        "━━━ 💹 UMUMIY HISOB ━━━\n"
-        f"💵 Umumiy tushum (Kirim): <b>{stats['total_income']:,} so'm</b>\n"
-        f"💸 Operatsion xarajat (Chiqim): <b>{stats['total_expense']:,} so'm</b>\n"
-        f"📦 Omborga sarmoya (Tovar olishga): <b>{stats['total_restock']:,} so'm</b>\n"
+        "📊 <b>MOLIYA VA HISOBOT</b>\n\n"
+        "━━━ 💹 UMUMIY BIZNES HOLATI ━━━\n"
+        f"💵 Jami sotuvdan tushgan pul: <b>{stats['total_income']:,} so'm</b>\n"
+        f"💸 Jami xarajatlar: <b>{stats['total_expense']:,} so'm</b>\n"
+        f"📦 Tovar olib kelishga ketgan pul: <b>{stats['total_restock']:,} so'm</b>\n"
         f"💰 Sof foyda: <b>{stats['net_profit']:,} so'm</b>\n\n"
         
         "━━━ 📅 BUGUNGI KUNLIK HISOB ━━━\n"
-        f"📥 Bugungi kirim (Savdo): <b>{stats['daily_income']:,} so'm</b>\n"
-        f"📤 Bugungi operatsion xarajat: <b>{stats['daily_expense']:,} so'm</b>\n"
-        f"📦 Bugungi tovar olishga sarmoya: <b>{stats['daily_restock']:,} so'm</b>\n"
+        f"📥 Bugungi savdo tushumi: <b>{stats['daily_income']:,} so'm</b>\n"
+        f"📤 Bugungi kundalik xarajatlar: <b>{stats['daily_expense']:,} so'm</b>\n"
+        f"📦 Bugun tovar olishga ketgan pul: <b>{stats['daily_restock']:,} so'm</b>\n"
     )
     
     if stats['daily_expenses_list']:
-        text += "\n🧾 <i>Bugungi operatsion chiqimlar ro'yxati:</i>\n"
+        text += "\n🧾 <i>Bugungi xarajatlar ro'yxati:</i>\n"
         for exp in stats['daily_expenses_list']:
             text += f"➖ {exp['description']}: {exp['amount']:,} so'm\n"
             
     text += (
-        "\n💰 <b>SIZNING CHO'NTAGINGIZDA (Bugun):</b>\n"
-        f"Savdodan tushgan sof foyda (tannarxsiz): <b>{stats['daily_sale_profit']:,} so'm</b>\n"
-        f"Shundan operatsion xarajatlar (taksi, obet) ayrilsa: <b>-{stats['daily_expense']:,} so'm</b>\n"
-        f"👉 <b>Sizga qoldi: {stats['daily_pocket']:,} so'm</b>\n"
-        f"<i>(Izoh: Omborga kiritilgan sarmoya foydadan ayirilmaydi, chunki u omborda tovar bo'lib turibdi)</i>\n"
+        "\n💰 <b>TOZA FOYDA (Faqat bugun uchun):</b>\n"
+        f"Bugungi savdodan ko'rilgan foyda (tovar puli chiqib ketganda): <b>{stats['daily_sale_profit']:,} so'm</b>\n"
+        f"Shundan bugungi xarajatlar (taksi, obet va h.k) ayrilsa: <b>-{stats['daily_expense']:,} so'm</b>\n"
+        f"👉 <b>Cho'ntakka qolgani (Sizga qoldi): {stats['daily_pocket']:,} so'm</b>\n"
+        f"<i>(Izoh: Yangi tovar olishga ketgan pul xarajatga kirmaydi, chunki u omboringizda turibdi)</i>\n"
     )
     
     text += (
-        "\n━━━ 📦 OMBOR TAHLILI ━━━\n"
-        f"🏷 Mahsulot turi: <b>{inv['total_products']} xil</b>\n"
-        f"📦 Jami dona: <b>{inv['total_qty']} dona</b>\n"
-        f"💸 Tikkan mablag' (tannarx): <b>{inv['total_cost_invested']:,} so'm</b>\n"
-        f"💵 Hammasi sotilsa: <b>{inv['total_potential_revenue']:,} so'm</b>\n"
-        f"📈 Kutilayotgan foyda: <b>{inv['potential_profit']:,} so'm</b>\n\n"
+        "\n━━━ 📦 OMBORDAGI HOLAT ━━━\n"
+        f"🏷 Necha xil tovar bor: <b>{inv['total_products']} xil</b>\n"
+        f"📦 Jami tovarlar soni: <b>{inv['total_qty']} dona</b>\n"
+        f"💸 Ombordagi tovarlar qiymati (Olingan narxida): <b>{inv['total_cost_invested']:,} so'm</b>\n"
+        f"💵 Hammasi sotilsa bo'ladigan pul: <b>{inv['total_potential_revenue']:,} so'm</b>\n"
+        f"📈 Kutilayotgan toza foyda: <b>{inv['potential_profit']:,} so'm</b>\n\n"
     )
     if top_products:
         text += "🔥 <b>Eng ko'p sotilganlar:</b>\n"
@@ -139,7 +139,7 @@ async def show_finance_menu(message: Message, state: FSMContext):
 @finance_router.message(F.text == "💸 Boshqa xarajatlar", StateFilter('*'))
 async def main_add_exp(message: Message, state: FSMContext):
     await state.set_state(FinanceStates.waiting_for_expense_amount)
-    await message.answer("📤 Chiqim (xarajat) summasini raqamda kiriting (Masalan: 50000):")
+    await message.answer("📤 Qancha xarajat qildingiz? Faqat raqam yozing (Masalan: 50000):")
 
 
 
@@ -150,7 +150,7 @@ async def fin_exp_amount(message: Message, state: FSMContext):
         return
     await state.update_data(amount=int(message.text))
     await state.set_state(FinanceStates.waiting_for_expense_desc)
-    await message.answer("Nimaga xarajat qilinganini yozing (Masalan: Svet, obyet):")
+    await message.answer("Bu pul nimaga ishlatildi? (Masalan: Tushlikka, Taksiga, Svetga):")
 
 @finance_router.message(FinanceStates.waiting_for_expense_desc)
 async def fin_exp_desc(message: Message, state: FSMContext):
@@ -186,7 +186,7 @@ async def show_restock_products(message: Message, state: FSMContext):
     builder.row(InlineKeyboardButton(text="❌ Yopish", callback_data="admin_close_panel"))
 
     await message.answer(
-        "📥 <b>Omborga tovar qo'shish</b>\n\nQaysi mahsulotdan keldi? Tanlang:",
+        "📥 <b>Omborga tovar qo'shish</b>\n\nQaysi tovardan olib keldingiz? Tanlang:",
         parse_mode="HTML",
         reply_markup=builder.as_markup()
     )
@@ -204,7 +204,7 @@ async def restock_product_selected(callback: CallbackQuery, state: FSMContext):
     await callback.message.edit_reply_markup(reply_markup=None)
     await callback.message.answer(
         f"📦 <b>{product['title']}</b> keldi.\n\n"
-        f"💵 Bu safar qanchadan (tannarxi) keldi? Faqat raqamda yozing (Masalan: 400000):",
+        f"💵 Tovarni o'zingiz qanchadan sotib oldingiz? (Masalan: 400000):",
         parse_mode="HTML"
     )
     await callback.answer()
@@ -216,7 +216,7 @@ async def restock_cost_entered(message: Message, state: FSMContext):
         return
     await state.update_data(cost_price=int(message.text))
     await state.set_state(RestockStates.waiting_for_sale_price)
-    await message.answer("💰 Mijozlarga qanchadan sotamiz (sotish narxi)? (Masalan: 800000):")
+    await message.answer("💰 Xaridorga qanchadan sotamiz? (Masalan: 800000):")
 
 @finance_router.message(RestockStates.waiting_for_sale_price)
 async def restock_sale_entered(message: Message, state: FSMContext):
@@ -226,7 +226,7 @@ async def restock_sale_entered(message: Message, state: FSMContext):
     sale_price = f"{int(message.text):,} so'm"
     await state.update_data(sale_price=sale_price)
     await state.set_state(RestockStates.waiting_for_qty)
-    await message.answer("📦 Nechta dona keldi? (Masalan: 10):")
+    await message.answer("📦 Nechta dona olib keldingiz? (Masalan: 10):")
 
 @finance_router.message(RestockStates.waiting_for_qty)
 async def restock_qty_entered(message: Message, state: FSMContext):

@@ -6,9 +6,9 @@ def get_admin_main_menu():
         keyboard=[
             [KeyboardButton(text="🛒 Sotuv qilish"), KeyboardButton(text="📦 Omborga tovar qo'shish")],
             [KeyboardButton(text="💸 Boshqa xarajatlar"), KeyboardButton(text="➕ Yangi mahsulot")],
-            [KeyboardButton(text="📦 Mahsulotlar (Tahrir)"), KeyboardButton(text="📂 Kategoriyalar")],
-            [KeyboardButton(text="📥 So'rovlar"), KeyboardButton(text="👥 Adminlar")],
-            [KeyboardButton(text="💰 Moliya va Statistika"), KeyboardButton(text="🏠 Asosiy menyu")]
+            [KeyboardButton(text="✏️ Tovarlarni o'zgartirish"), KeyboardButton(text="📂 Bo'limlar")],
+            [KeyboardButton(text="📩 Xabarlar"), KeyboardButton(text="👥 Admin qo'shish")],
+            [KeyboardButton(text="📊 Moliya va Hisobot"), KeyboardButton(text="🏠 Asosiy menyu")]
         ],
         resize_keyboard=True
     )

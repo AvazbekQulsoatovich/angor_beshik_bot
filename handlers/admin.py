@@ -57,7 +57,7 @@ async def close_inline_panel(callback: CallbackQuery):
     await callback.answer()
 
 # --- Manage Admins ---
-@admin_router.message(F.text == "👥 Adminlarni boshqarish", StateFilter('*'))
+@admin_router.message(F.text == "👥 Admin qo'shish", StateFilter('*'))
 async def manage_admins(message: Message):
     if not await is_admin(message.from_user.id): return
     admins = await get_all_admins()
@@ -94,11 +94,11 @@ async def del_admin(callback: CallbackQuery):
     await callback.message.edit_reply_markup(reply_markup=get_admin_manage_kb(admins))
 
 # --- Categories Management ---
-@admin_router.message(F.text == "📂 Kategoriyalar", StateFilter('*'))
+@admin_router.message(F.text == "📂 Bo'limlar", StateFilter('*'))
 async def manage_categories(message: Message):
     if not await is_admin(message.from_user.id): return
-    categories = await db.get_all_categories(active_only=True)
-    await message.answer("📂 Kategoriyalar ro'yxati:", reply_markup=get_admin_categories_manage_kb(categories))
+    categories = await db.get_all_categories()
+    await message.answer("Bo'limlarni (Kategoriyalarni) boshqarish:", reply_markup=get_admin_categories_manage_kb(categories))
 
 @admin_router.callback_query(F.data == "admin_add_cat")
 async def add_category_start(callback: CallbackQuery, state: FSMContext):
@@ -334,7 +334,7 @@ async def product_confirm(message: Message, state: FSMContext):
     await state.clear()
 
 
-@admin_router.message(F.text == "📦 Mahsulotlar (Tahrir)", StateFilter('*'))
+@admin_router.message(F.text == "✏️ Tovarlarni o'zgartirish", StateFilter('*'))
 async def manage_products_cats(message: Message):
     if not await is_admin(message.from_user.id): return
     categories = await db.get_all_categories(active_only=True)
@@ -466,7 +466,7 @@ async def reply_to_inquiry_send(message: Message, state: FSMContext, bot: Bot):
     finally:
         await state.clear()
 
-@admin_router.message(F.text == "📥 So'rovlar", StateFilter('*'))
+@admin_router.message(F.text == "📩 Xabarlar", StateFilter('*'))
 async def show_new_inquiries(message: Message):
     if not await is_admin(message.from_user.id): return
     await state_clear_helper(message)
