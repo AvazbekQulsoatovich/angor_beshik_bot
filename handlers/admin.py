@@ -184,16 +184,25 @@ photo_upload_lock = asyncio.Lock()
 @admin_router.message(AdminProductStates.waiting_for_photos, F.photo)
 async def product_photo_received(message: Message, state: FSMContext):
     async with photo_upload_lock:
+        await asyncio.sleep(0.05)  # let other near-simultaneous requests queue up
         data = await state.get_data()
         photos = data.get('photos', [])
-        photos.append(message.photo[-1].file_id)
+        file_id = message.photo[-1].file_id
+        if file_id not in photos:  # deduplicate
+            photos.append(file_id)
         await state.update_data(photos=photos)
-    await message.reply(f"✅ {len(photos)}-rasm qabul qilindi. Yana yuboring yoki '✅ Rasm yuklab bo'ldim' tugmasini bosing.")
+        count = len(photos)
+    await message.reply(f"✅ {count}-rasm qabul qilindi. Yana yuboring yoki '✅ Rasm yuklab bo'ldim' tugmasini bosing.")
 
 @admin_router.callback_query(AdminProductStates.waiting_for_photos, F.data == "done_photos")
 async def product_photos_done(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    photos = data.get('photos', [])
+    if not photos:
+        await callback.answer("⚠️ Kamida 1 ta rasm yuboring!", show_alert=True)
+        return
     await state.set_state(AdminProductStates.waiting_for_title)
-    await callback.message.answer("Beshik nomi / modelini kiriting:")
+    await callback.message.answer(f"✅ Jami {len(photos)} ta rasm qabul qilindi.\n\nEndi beshik nomini kiriting:")
     await callback.answer()
 
 @admin_router.message(AdminProductStates.waiting_for_photos)
@@ -309,7 +318,8 @@ async def admin_edit_photo_recv(message: Message, state: FSMContext):
         photos = data.get('photos', [])
         photos.append(message.photo[-1].file_id)
         await state.update_data(photos=photos)
-    await message.reply(f"✅ {len(photos)}-yangi rasm qabul qilindi. Yana yuboring yoki '✅ Yangi rasmlarni yukladim' tugmasini bosing.")
+        count = len(photos)
+    await message.reply(f"✅ {count}-yangi rasm qabul qilindi. Yana yuboring yoki '✅ Yangi rasmlarni yukladim' tugmasini bosing.")
 
 @admin_router.callback_query(AdminProductEditStates.waiting_for_photos, F.data == "skip_photos")
 async def admin_edit_skip_photos(callback: CallbackQuery, state: FSMContext):
