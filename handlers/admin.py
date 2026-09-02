@@ -211,9 +211,45 @@ async def product_photo_invalid(message: Message):
 
 @admin_router.message(AdminProductStates.waiting_for_title)
 async def product_title(message: Message, state: FSMContext):
-    await state.update_data(title=message.text)
+    title = message.text
+    # Check if product with same name already exists
+    existing = await db.find_product_by_title(title)
+    if existing:
+        from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [
+                InlineKeyboardButton(text="📦 Ombor to'ldirish (Kirim)", callback_data=f"restock:{existing['id']}"),
+                InlineKeyboardButton(text="➕ Yangi mahsulot sifatida qo'sh", callback_data="add_as_new")
+            ]
+        ])
+        await message.answer(
+            f"⚠️ <b>'{title}'</b> nomli mahsulot allaqachon bazada mavjud!\n\n"
+            f"📦 Hozirgi ombor: <b>{existing['in_stock']} dona</b>\n"
+            f"💰 Narxi: {existing['price']}\n\n"
+            f"Nima qilmoqchisiz?",
+            parse_mode="HTML",
+            reply_markup=kb
+        )
+        await state.update_data(title=title, existing_id=existing['id'])
+        return
+    await state.update_data(title=title)
     await state.set_state(AdminProductStates.waiting_for_description)
     await message.answer("Izoh / tavsif kiriting:")
+
+@admin_router.callback_query(F.data.startswith("restock:"))
+async def restock_product(callback: CallbackQuery, state: FSMContext):
+    product_id = int(callback.data.split(":")[1])
+    await state.update_data(restock_product_id=product_id)
+    await state.set_state(AdminProductStates.waiting_for_cost_price)
+    await callback.message.answer("💵 Yangi kelgan tovarning tannarxini kiriting (raqamda, masalan: 400000):")
+    await callback.answer()
+
+@admin_router.callback_query(F.data == "add_as_new")
+async def add_as_new_product(callback: CallbackQuery, state: FSMContext):
+    await state.update_data(restock_product_id=None)
+    await state.set_state(AdminProductStates.waiting_for_description)
+    await callback.message.answer("Izoh / tavsif kiriting:")
+    await callback.answer()
 
 @admin_router.message(AdminProductStates.waiting_for_description)
 async def product_desc(message: Message, state: FSMContext):
@@ -221,14 +257,6 @@ async def product_desc(message: Message, state: FSMContext):
     await state.set_state(AdminProductStates.waiting_for_cost_price)
     await message.answer("💵 Tannarxini kiriting — qanchaga olib keldi/keladigan narx? (Faqat raqam, masalan: 400000):")
 
-@admin_router.message(AdminProductStates.waiting_for_cost_price)
-async def product_cost_price(message: Message, state: FSMContext):
-    if not message.text or not message.text.isdigit():
-        await message.answer("⚠️ Iltimos, faqat raqam kiriting! (Masalan: 400000)")
-        return
-    await state.update_data(cost_price=int(message.text))
-    await state.set_state(AdminProductStates.waiting_for_price)
-    await message.answer("💰 Sotish narxini kiriting — mijozlarga ko'rinadigan narx (Masalan: 800 000 so'm):")
 
 @admin_router.message(AdminProductStates.waiting_for_price)
 async def product_price(message: Message, state: FSMContext):
@@ -259,18 +287,49 @@ async def product_stock(message: Message, state: FSMContext):
     else:
         await message.answer(f"✅ Preview:\n\n{text}", parse_mode="HTML", reply_markup=get_product_preview_kb())
 
+@admin_router.message(AdminProductStates.waiting_for_cost_price)
+async def product_cost_price_or_restock(message: Message, state: FSMContext):
+    if not message.text or not message.text.isdigit():
+        await message.answer("⚠️ Iltimos, faqat raqam kiriting! (Masalan: 400000)")
+        return
+    cost_price = int(message.text)
+    await state.update_data(cost_price=cost_price)
+    
+    data = await state.get_data()
+    # If this is a restock flow, skip price and go straight to qty
+    if data.get('restock_product_id'):
+        await state.set_state(AdminProductStates.waiting_for_stock)
+        await message.answer("📦 Nechta dona keldi? Sonini raqamda kiriting (Masalan: 5):")
+    else:
+        await state.set_state(AdminProductStates.waiting_for_price)
+        await message.answer("💰 Sotish narxini kiriting — mijozlarga ko'rinadigan narx (Masalan: 800 000 so'm):")
+
 @admin_router.message(AdminProductStates.waiting_for_confirmation)
 async def product_confirm(message: Message, state: FSMContext):
     if message.text == "✅ Ha (Saqlash)":
         data = await state.get_data()
         cost_price = data.get('cost_price', 0)
         qty = data['in_stock']
-        await db.add_product(data['category_id'], data['title'], data['description'], data['price'], cost_price, data['photos'], qty)
-        # Add incoming inventory as expense (cost)
-        if cost_price > 0 and qty > 0:
-            total_cost = cost_price * qty
-            await db.add_transaction('expense', total_cost, f"Tovar keldi: {data['title']} x{qty} dona")
-        await message.answer(f"✅ <b>{data['title']}</b> muvaffaqiyatli saqlandi!\n📦 Ombor: {qty} dona", parse_mode="HTML", reply_markup=get_admin_main_menu())
+        restock_id = data.get('restock_product_id')
+
+        if restock_id:
+            # Restock existing product
+            await db.add_stock_to_product(restock_id, qty, cost_price)
+            if cost_price > 0 and qty > 0:
+                await db.add_transaction('expense', cost_price * qty, f"Tovar to'ldirildi: {data['title']} x{qty} dona")
+            await message.answer(
+                f"✅ <b>{data['title']}</b> ombori to'ldirildi!\n📦 Qo'shildi: +{qty} dona",
+                parse_mode="HTML", reply_markup=get_admin_main_menu()
+            )
+        else:
+            # New product
+            await db.add_product(data['category_id'], data['title'], data['description'], data['price'], cost_price, data['photos'], qty)
+            if cost_price > 0 and qty > 0:
+                await db.add_transaction('expense', cost_price * qty, f"Yangi tovar: {data['title']} x{qty} dona")
+            await message.answer(
+                f"✅ <b>{data['title']}</b> muvaffaqiyatli saqlandi!\n📦 Ombor: {qty} dona",
+                parse_mode="HTML", reply_markup=get_admin_main_menu()
+            )
     else:
         await message.answer("❌ Bekor qilindi.", reply_markup=get_admin_main_menu())
     await state.clear()
@@ -411,10 +470,50 @@ async def reply_to_inquiry_send(message: Message, state: FSMContext, bot: Bot):
 @admin_router.message(F.text == "📥 So'rovlar", StateFilter('*'))
 async def show_new_inquiries(message: Message):
     if not await is_admin(message.from_user.id): return
+    await state_clear_helper(message)
     inquiries = await db.get_new_inquiries()
+    
     if not inquiries:
-        await message.answer("Yangi so'rovlar yo'q 😌.")
+        from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+        await message.answer(
+            "📭 Yangi so'rovlar yo'q.\n\nBarcha so'rovlarni ko'rish uchun tugmani bosing:",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="📋 Barcha so'rovlar", callback_data="inq_all")]
+            ])
+        )
         return
+
+    await message.answer(f"📬 <b>Yangi so'rovlar: {len(inquiries)} ta</b>", parse_mode="HTML")
     for inq in inquiries:
-        text = f"So'rov #{inq['id']}\nMijoz: {inq['user_name']} (ID: {inq['user_id']})\nXabar: {inq['message_text']}"
-        await message.answer(text, reply_markup=get_reply_to_inquiry_kb(inq['user_id'], inq['id']))
+        product_name = inq['product_title'] or "Noma'lum mahsulot"
+        text = (
+            f"📩 <b>So'rov #{inq['id']}</b>\n"
+            f"👤 Mijoz: <b>{inq['user_name']}</b> (ID: <code>{inq['user_id']}</code>)\n"
+            f"🛏 Mahsulot: <b>{product_name}</b>\n"
+            f"💬 Xabar: {inq['message_text']}\n"
+            f"🕐 Vaqt: {inq['created_at']}"
+        )
+        await message.answer(text, parse_mode="HTML", reply_markup=get_reply_to_inquiry_kb(inq['user_id'], inq['id']))
+
+async def state_clear_helper(message):
+    pass
+
+@admin_router.callback_query(F.data == "inq_all")
+async def show_all_inquiries(callback: CallbackQuery):
+    inquiries = await db.get_all_inquiries(limit=30)
+    if not inquiries:
+        await callback.message.edit_text("Hech qanday so'rov yo'q.")
+        return
+    await callback.message.edit_text(f"📋 <b>Barcha so'rovlar (oxirgi {len(inquiries)} ta):</b>", parse_mode="HTML")
+    for inq in inquiries:
+        status_icon = "✅" if inq['status'] == 'answered' else "🆕"
+        product_name = inq['product_title'] or "Noma'lum"
+        text = (
+            f"{status_icon} <b>So'rov #{inq['id']}</b>\n"
+            f"👤 {inq['user_name']} | 🛏 {product_name}\n"
+            f"💬 {inq['message_text']}\n"
+            f"🕐 {inq['created_at']}"
+        )
+        kb = get_reply_to_inquiry_kb(inq['user_id'], inq['id']) if inq['status'] == 'new' else None
+        await callback.message.answer(text, parse_mode="HTML", reply_markup=kb)
+    await callback.answer()
