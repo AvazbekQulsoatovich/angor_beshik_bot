@@ -19,7 +19,7 @@ class FinanceSellStates(StatesGroup):
     waiting_for_price = State()
 
 # ─── Sotuv qilish (Kirim) ──────────────────────────────────────────────────────
-@finance_router.message(F.text == "🛒 Sotuv qilish", StateFilter('*'))
+@finance_router.message(F.text.in_({"🛒 Sotuv qilish", "📥 Kirim (Sotuv)"}), StateFilter('*'))
 async def show_sell_products(message: Message, state: FSMContext):
     await state.clear()
     all_prods = await db.get_all_active_products_for_sale()
@@ -85,7 +85,7 @@ async def sell_product_selected(callback: CallbackQuery, state: FSMContext):
     await state.clear()
 
 # ─── Moliya Statistikasi ───────────────────────────────────────────────────────
-@finance_router.message(F.text == "📊 Moliya va Hisobot", StateFilter('*'))
+@finance_router.message(F.text.in_({"📊 Moliya va Hisobot", "💰 Moliya va Statistika"}), StateFilter('*'))
 async def show_finance_menu(message: Message, state: FSMContext):
     await state.clear()
     stats = await db.get_finances()
@@ -136,7 +136,7 @@ async def show_finance_menu(message: Message, state: FSMContext):
     await message.answer(text, parse_mode="HTML", reply_markup=get_admin_main_menu())
 
 # ─── Qo'lda chiqim qo'shish (Asosiy Menyudan) ───────────────────────────────────────────────────
-@finance_router.message(F.text == "💸 Boshqa xarajatlar", StateFilter('*'))
+@finance_router.message(F.text.in_({"💸 Boshqa xarajatlar", "📤 Boshqa xarajatlar", "📤 Chiqim (Xarajat)"}), StateFilter('*'))
 async def main_add_exp(message: Message, state: FSMContext):
     await state.set_state(FinanceStates.waiting_for_expense_amount)
     await message.answer("📤 Qancha xarajat qildingiz? Faqat raqam yozing (Masalan: 50000):")
@@ -166,7 +166,7 @@ class RestockStates(StatesGroup):
     waiting_for_sale_price = State()
     waiting_for_qty = State()
 
-@finance_router.message(F.text == "📦 Omborga tovar qo'shish", StateFilter('*'))
+@finance_router.message(F.text.in_({"📦 Omborga tovar qo'shish", "📥 Omborga kirim"}), StateFilter('*'))
 async def show_restock_products(message: Message, state: FSMContext):
     await state.clear()
     all_prods = await db.get_all_active_products_for_sale()
