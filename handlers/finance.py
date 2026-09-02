@@ -150,3 +150,92 @@ async def fin_exp_desc(message: Message, state: FSMContext):
     await db.add_transaction('expense', amount, message.text)
     await state.clear()
     await message.answer(f"✅ Chiqim saqlandi: <b>{amount:,} so'm</b> — {message.text}", parse_mode="HTML")
+
+# ─── Omborga kirim (Restock) ──────────────────────────────────────────────────
+class RestockStates(StatesGroup):
+    waiting_for_cost_price = State()
+    waiting_for_sale_price = State()
+    waiting_for_qty = State()
+
+@finance_router.message(F.text == "📥 Omborga kirim", StateFilter('*'))
+async def show_restock_products(message: Message, state: FSMContext):
+    await state.clear()
+    all_prods = await db.get_all_active_products_for_sale()
+    if not all_prods:
+        await message.answer("⚠️ Hozirda omborda mahsulot yo'q. Oldin 'Yangi mahsulot' qo'shing.")
+        return
+
+    builder = InlineKeyboardBuilder()
+    for p in all_prods:
+        stock_count = p['in_stock'] if p['in_stock'] > 0 else 0
+        builder.row(
+            InlineKeyboardButton(
+                text=f"📦 {p['title']} ({stock_count} dona)",
+                callback_data=f"restock_select:{p['id']}"
+            )
+        )
+    builder.row(InlineKeyboardButton(text="❌ Yopish", callback_data="admin_close_panel"))
+
+    await message.answer(
+        "📥 <b>Omborga tovar qo'shish</b>\n\nQaysi mahsulotdan keldi? Tanlang:",
+        parse_mode="HTML",
+        reply_markup=builder.as_markup()
+    )
+
+@finance_router.callback_query(F.data.startswith("restock_select:"))
+async def restock_product_selected(callback: CallbackQuery, state: FSMContext):
+    product_id = int(callback.data.split(":")[1])
+    product = await db.get_product_by_id(product_id)
+    if not product:
+        await callback.answer("Mahsulot topilmadi!", show_alert=True)
+        return
+
+    await state.update_data(restock_id=product_id, title=product['title'])
+    await state.set_state(RestockStates.waiting_for_cost_price)
+    await callback.message.edit_reply_markup(reply_markup=None)
+    await callback.message.answer(
+        f"📦 <b>{product['title']}</b> keldi.\n\n"
+        f"💵 Bu safar qanchadan (tannarxi) keldi? Faqat raqamda yozing (Masalan: 400000):",
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+@finance_router.message(RestockStates.waiting_for_cost_price)
+async def restock_cost_entered(message: Message, state: FSMContext):
+    if not message.text or not message.text.isdigit():
+        await message.answer("⚠️ Faqat raqam kiriting!")
+        return
+    await state.update_data(cost_price=int(message.text))
+    await state.set_state(RestockStates.waiting_for_sale_price)
+    await message.answer("💰 Mijozlarga qanchadan sotamiz (sotish narxi)? (Masalan: 800000):")
+
+@finance_router.message(RestockStates.waiting_for_sale_price)
+async def restock_sale_entered(message: Message, state: FSMContext):
+    if not message.text or not message.text.isdigit():
+        await message.answer("⚠️ Faqat raqam kiriting (so'm so'zini yozmang)!")
+        return
+    sale_price = f"{int(message.text):,} so'm"
+    await state.update_data(sale_price=sale_price)
+    await state.set_state(RestockStates.waiting_for_qty)
+    await message.answer("📦 Nechta dona keldi? (Masalan: 10):")
+
+@finance_router.message(RestockStates.waiting_for_qty)
+async def restock_qty_entered(message: Message, state: FSMContext):
+    if not message.text or not message.text.isdigit():
+        await message.answer("⚠️ Faqat raqam kiriting!")
+        return
+    qty = int(message.text)
+    data = await state.get_data()
+    
+    await db.add_stock_to_product(data['restock_id'], qty, data['cost_price'], data['sale_price'])
+    total_expense = qty * data['cost_price']
+    await db.add_transaction('expense', total_expense, f"Omborga kirim: {data['title']} x{qty} dona")
+    
+    await state.clear()
+    await message.answer(
+        f"✅ <b>Ombor to'ldirildi!</b>\n\n"
+        f"📦 {data['title']}: <b>+{qty} dona</b>\n"
+        f"💸 Moliyaga xarajat yozildi: <b>{total_expense:,} so'm</b>",
+        parse_mode="HTML",
+        reply_markup=get_admin_main_menu()
+    )

@@ -149,12 +149,13 @@ async def edit_category_emoji(message: Message, state: FSMContext):
     await message.answer(f"✅ Kategoriya yangilandi!")
 
 # --- Product Management ---
-@admin_router.message(F.text == "➕ Mahsulot qo'shish", StateFilter('*'))
+@admin_router.message(F.text == "➕ Yangi mahsulot", StateFilter('*'))
 async def add_product_start(message: Message, state: FSMContext):
     if not await is_admin(message.from_user.id): return
+    await state.clear()
     categories = await db.get_all_categories(active_only=True)
     if not categories:
-        await message.answer("Oldin kategoriya qo'shing!")
+        await message.answer("⚠️ Oldin kategoriya qo'shing!")
         return
     
     from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -335,7 +336,7 @@ async def product_confirm(message: Message, state: FSMContext):
     await state.clear()
 
 
-@admin_router.message(F.text == "📦 Mahsulotlar (Tahrir/O'chirish)", StateFilter('*'))
+@admin_router.message(F.text == "📦 Mahsulotlar (Tahrir)", StateFilter('*'))
 async def manage_products_cats(message: Message):
     if not await is_admin(message.from_user.id): return
     categories = await db.get_all_categories(active_only=True)
